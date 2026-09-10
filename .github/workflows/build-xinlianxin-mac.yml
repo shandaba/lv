@@ -1,0 +1,95 @@
+name: Build XinLianXin macOS M4
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/build-xinlianxin-mac.yml'
+  workflow_dispatch:
+
+jobs:
+  build-arm64:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Environment
+        run: |
+          uname -m
+          sw_vers
+          node --version
+          npm --version
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm install --no-audit --no-fund
+
+      - name: Syntax check
+        working-directory: app
+        run: |
+          node --check main.js
+          node --check preload.js
+
+      - name: Build ARM64 app directory
+        working-directory: app
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder --mac dir --arm64 -c.mac.identity=null -c.directories.output=dist
+
+      - name: Ad-hoc sign and validate ARM64
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH=$(find app/dist -maxdepth 2 -type d -name '*.app' | head -1)
+          test -n "$APP_PATH"
+          EXEC_NAME=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP_PATH/Contents/Info.plist")
+          EXEC_PATH="$APP_PATH/Contents/MacOS/$EXEC_NAME"
+          codesign --force --deep --sign - "$APP_PATH"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          file "$EXEC_PATH" | tee /tmp/file.txt
+          lipo -archs "$EXEC_PATH" | tee /tmp/lipo.txt
+          grep -q 'arm64' /tmp/lipo.txt
+          grep -q 'Mach-O 64-bit executable arm64' /tmp/file.txt
+          echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+          echo "EXEC_NAME=$EXEC_NAME" >> "$GITHUB_ENV"
+
+      - name: Package APP ZIP and DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release/dmg
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" 'release/薪连薪每日推进_AI增长助手_v3.1.0_M4_ARM64.app.zip'
+          cp -R "$APP_PATH" release/dmg/
+          ln -s /Applications release/dmg/Applications
+          hdiutil create -volname '薪连薪每日推进' -srcfolder release/dmg -ov -format UDZO 'release/薪连薪每日推进_AI增长助手_v3.1.0_M4_ARM64.dmg'
+          rm -rf release/dmg
+
+      - name: Acceptance report
+        shell: bash
+        run: |
+          {
+            echo '薪连薪每日推进 AI增长助手 v3.1.0｜macOS ARM64 CI验收报告'
+            echo "构建时间: $(date '+%Y-%m-%d %H:%M:%S %z')"
+            echo "Runner架构: $(uname -m)"
+            echo "macOS: $(sw_vers -productVersion)"
+            echo "CFBundleExecutable: $EXEC_NAME"
+            echo "file: $(cat /tmp/file.txt)"
+            echo "lipo: $(cat /tmp/lipo.txt)"
+            echo 'codesign: PASS (ad-hoc)'
+            echo 'node syntax: PASS'
+            echo 'DMG: PASS'
+            echo 'APP ZIP: PASS'
+            echo '说明: 这是CI构建验收，不冒充用户M4 Mac mini真机启动验收。首次打开未做Apple Developer ID公证的软件时，macOS可能要求右键“打开”。'
+          } > 'release/验收报告.txt'
+          shasum -a 256 release/* >> 'release/验收报告.txt'
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: XinLianXin-Daily-v3.1.0-M4-ARM64
+          path: release/*
+          if-no-files-found: error
+          retention-days: 30
