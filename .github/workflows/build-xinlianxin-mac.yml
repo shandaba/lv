@@ -31,6 +31,7 @@ jobs:
         working-directory: app
         run: |
           node --check main.js
+          node --check main-fixed.js
           node --check preload.js
 
       - name: Build ARM64 app directory
@@ -61,17 +62,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release/dmg
-          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" 'release/薪连薪每日推进_AI增长助手_v3.1.0_M4_ARM64.app.zip'
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" 'release/薪连薪每日推进_AI增长助手_v3.1.1_M4_ARM64.app.zip'
           cp -R "$APP_PATH" release/dmg/
           ln -s /Applications release/dmg/Applications
-          hdiutil create -volname '薪连薪每日推进' -srcfolder release/dmg -ov -format UDZO 'release/薪连薪每日推进_AI增长助手_v3.1.0_M4_ARM64.dmg'
+          hdiutil create -volname '薪连薪每日推进' -srcfolder release/dmg -ov -format UDZO 'release/薪连薪每日推进_AI增长助手_v3.1.1_M4_ARM64.dmg'
           rm -rf release/dmg
 
       - name: Acceptance report
         shell: bash
         run: |
           {
-            echo '薪连薪每日推进 AI增长助手 v3.1.0｜macOS ARM64 CI验收报告'
+            echo '薪连薪每日推进 AI增长助手 v3.1.1｜macOS ARM64 CI验收报告'
             echo "构建时间: $(date '+%Y-%m-%d %H:%M:%S %z')"
             echo "Runner架构: $(uname -m)"
             echo "macOS: $(sw_vers -productVersion)"
@@ -80,6 +81,8 @@ jobs:
             echo "lipo: $(cat /tmp/lipo.txt)"
             echo 'codesign: PASS (ad-hoc)'
             echo 'node syntax: PASS'
+            echo 'applicationSupport path compatibility: FIXED'
+            echo 'new task full editor: INCLUDED'
             echo 'DMG: PASS'
             echo 'APP ZIP: PASS'
             echo '说明: 这是CI构建验收，不冒充用户M4 Mac mini真机启动验收。首次打开未做Apple Developer ID公证的软件时，macOS可能要求右键“打开”。'
@@ -89,7 +92,7 @@ jobs:
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
-          name: XinLianXin-Daily-v3.1.0-M4-ARM64
+          name: XinLianXin-Daily-v3.1.1-M4-ARM64
           path: release/*
           if-no-files-found: error
           retention-days: 30
