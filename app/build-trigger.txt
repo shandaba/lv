@@ -1,0 +1,1 @@
+trigger macOS ARM64 build v3.1.0
