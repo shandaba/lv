@@ -1,9 +1,9 @@
 {
   "name": "xinlianxin-daily-progress",
   "productName": "薪连薪每日推进",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "薪连薪每日推进 AI增长助手（M4/Apple Silicon）",
-  "main": "main.js",
+  "main": "main-fixed.js",
   "license": "UNLICENSED",
   "devDependencies": {
     "electron": "44.2.0",
